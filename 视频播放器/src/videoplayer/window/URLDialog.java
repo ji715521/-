@@ -1,5 +1,6 @@
 package videoplayer.window;
 
+import java.awt.Color;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -17,6 +18,8 @@ import videoplayer.main.PlayerMain;
 public class URLDialog extends JDialog {
 	private static final int WIDTH = 360;
 	private static final int HEIGHT = 180;
+	@SuppressWarnings("unused")
+	private MainWindow mainWindow;
 
 	/**
 	 * 
@@ -26,6 +29,7 @@ public class URLDialog extends JDialog {
 
 	public URLDialog(MainWindow mainWindow, String title, boolean modal) {
 		super(mainWindow, title, modal);
+		this.mainWindow=mainWindow;
 		getContentPane().setLayout(new GridLayout(4, 1, 0, 0));
 
 		JLabel lblInputUrl = new JLabel("input URL");
@@ -36,6 +40,7 @@ public class URLDialog extends JDialog {
 		textField.setColumns(10);
 
 		JLabel label = new JLabel("http://");
+		label.setForeground(Color.MAGENTA);
 		getContentPane().add(label);
 
 		JPanel panel = new JPanel();
@@ -63,12 +68,12 @@ public class URLDialog extends JDialog {
 				} else if (string.matches(
 						"^(http|https|ftp)\\://([a-zA-Z0-9\\.\\-]+(\\:[a-zA-Z0-9\\.&amp;%\\$\\-]+)*@)?((25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])|([a-zA-Z0-9\\-]+\\.)*[a-zA-Z0-9\\-]+\\.[a-zA-Z]{2,4})(\\:[0-9]+)?(/[^/][a-zA-Z0-9\\.\\,\\?\\'\\\\/\\+&amp;%\\$#\\=~_\\-@]*)*$")) {
 					//如果匹配成功,说明是网址
-					
 					//判断是网页还是视频文件
 					if (PlayerMain.isVideoURL(string)) {
 						PlayerMain.openVideoByURL(string);
 					} else {
-//						PlayerMain.openURL(string);
+						PlayerMain.openURL(string);
+						mainWindow.setTitle(string);
 					}
 					URLDialog.this.dispose();// ;
 				} else {

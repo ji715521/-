@@ -1,27 +1,52 @@
 package videoplayer.main;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
-import uk.co.caprica.vlcj.binding.internal.libvlc_media_list_t;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
+
 import uk.co.caprica.vlcj.discovery.NativeDiscovery;
 import uk.co.caprica.vlcj.player.media.Media;
 import uk.co.caprica.vlcj.player.media.simple.SimpleMedia;
+import videoplayer.util.spider.SpiderUtils;
 import videoplayer.window.MainWindow;
 
+/*
+ * videoplayer2.0
+ * 添加:
+ * 		打开文件夹
+ * 		
+ * 		标题显示正在播放
+ */
 public class PlayerMain {
+	/**
+	 * 窗体引用
+	 */
 	protected static MainWindow frame;
+	/**
+	 * 视频文件格式数组
+	 */
 	public static final String[] VIDEO_FORMATS = { "avi", "wmv", "mpeg", "mp4", "mov", "mkv", "flv", "f4v", "m4v",
-			"rmvb", "rm", "3gp", "dat", "ts", "mts", "vob" };
-	// 资源路径
-	private static String[] files = { "D:\\迅雷下载\\《七个颠覆你思想的演讲》[中英字幕]视频下载\\第3集 耳聋：一个新兴的治疗策略.mp4",
-			"E:\\BaiduYunDownload\\韩顺平\\韩顺平.循序渐进学.java.从入门到精通.第00讲-开山篇.avi" };
+			"rmvb", "rm", "3gp", "dat", "ts", "mts", "vob","m3u8" };
+	/**
+	 * 打开文件窗口的初始路径
+	 */
+	private static final String CURRENT_DIR = "E:\\BaiduYunDownload\\";
+	/**
+	 * 资源路径
+	 */
+	private static String openVideoFile;
 
-	// 播放器参数
+	/**
+	 * 播放器参数
+	 */
 	protected static String[] cans = { "--subsdec-coding=GB18030" };
 
 	public static void main(final String[] args) {
@@ -34,7 +59,7 @@ public class PlayerMain {
 				frame = new MainWindow();
 				frame.setVisible(true);
 				// frame.getMediaPlayer().playMedia(files[0], cans);//直接播放
-				frame.getMediaPlayer().prepareMedia(files[0], cans);// 控制播放
+				// frame.getMediaPlayer().prepareMedia(openVideoFile, cans);// 控制播放
 				// 设置进度条
 				new SwingWorker<String, Integer>() {
 
@@ -118,16 +143,71 @@ public class PlayerMain {
 	}
 
 	/**
+	 * 设置全屏
+	 * 
+	 * @param b
+	 */
+	public static void setFullScreen(boolean b) {
+		frame.getMediaPlayer().setFullScreen(b);
+	}
+
+	/**
 	 * 打开视频文件
 	 */
 	public static void openVideo() {
 		JFileChooser chooser = new JFileChooser();
+		chooser.setCurrentDirectory(new File(CURRENT_DIR));
 		int v = chooser.showOpenDialog(null);
 
 		if (v == JFileChooser.APPROVE_OPTION) {
 			File file = chooser.getSelectedFile();
-			frame.getMediaPlayer().playMedia(file.getAbsolutePath());// 直接播放
+			setOpenVideoFile(file.getAbsolutePath());
+			frame.setTitle(getOpenVideoFile());
+			frame.getMediaPlayer().playMedia(getOpenVideoFile());// 直接播放
 		}
+	}
+
+	/**
+	 * 根据用户选择打开视频
+	 * 
+	 * @param selectedValue
+	 */
+	public static void openVideo(String selectedValue) {
+		setOpenVideoFile(selectedValue);
+		frame.setTitle(selectedValue);
+		frame.getMediaPlayer().playMedia(selectedValue);// 直接播放
+	}
+
+	/**
+	 * 打开文件夹,获取list表数据
+	 * 
+	 * @return
+	 */
+	public static void openDir() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setMultiSelectionEnabled(false);
+		chooser.setCurrentDirectory(new File(CURRENT_DIR));
+		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		chooser.setDialogTitle("打开文件夹");
+		int v = chooser.showOpenDialog(null);
+
+		String[] strings = null;
+		if (v == JFileChooser.APPROVE_OPTION) {
+			File file = chooser.getSelectedFile();
+			File[] listFiles = file.listFiles();
+
+			strings = new String[listFiles.length];
+
+			for (int i = 0; i < listFiles.length; i++) {
+				File file2 = listFiles[i];
+				String path = file2.getAbsolutePath();
+				if (isVideoEnds(path)) {
+					strings[i] = new String(path);
+				}
+			}
+		}
+
+		frame.setListData(strings);
 	}
 
 	/**
@@ -144,35 +224,68 @@ public class PlayerMain {
 	}
 
 	/**
-	 * 打开整个网页的所有视频
-	 * 
-	 * @param string
-	 */
-	public static void openURL(String string) {
-		Media m = new SimpleMedia(
-				"http://ugcbsy.qq.com/z06877m8vyv.p712.1.mp4?sdtfrom=v1010&guid=22c828793b84760c4b48cd36eaad2c33&vkey=8508900D675E8F1A08F75219CE6ADA3E01AEF0F09BC92DF928202979E18C851355E4B6BDC2EF22DE056A503D0EF36CD45F49BDAED3F468D2FA5002D2AAD9C83B1B2551ADD70BD22538B79491A4EF0B6D817CA7DE0F38830BF45EB41B9628F75C536DEACEC9971D237477E7BCD272524052342F623BCE4CEE");
-		frame.getMediaPlayer().playMedia(m);// 直接播放
-
-	}
-
-	/**
 	 * 打开网络视频
 	 * 
 	 * @param string
 	 */
 	public static void openVideoByURL(String string) {
+		// Media m = new SimpleMedia(
+		// "http://ugcbsy.qq.com/z06877m8vyv.p712.1.mp4?sdtfrom=v1010&guid=22c828793b84760c4b48cd36eaad2c33&vkey=8508900D675E8F1A08F75219CE6ADA3E01AEF0F09BC92DF928202979E18C851355E4B6BDC2EF22DE056A503D0EF36CD45F49BDAED3F468D2FA5002D2AAD9C83B1B2551ADD70BD22538B79491A4EF0B6D817CA7DE0F38830BF45EB41B9628F75C536DEACEC9971D237477E7BCD272524052342F623BCE4CEE");
+		Media m = new SimpleMedia(string);
+		setOpenVideoFile(string);
+		frame.getMediaPlayer().playMedia(m);// 直接播放
+
+	}
+
+	/**
+	 * 打开整个网页的所有视频
+	 * 
+	 * @param string
+	 */
+	public static void openURL(String string) {
+
 		new Thread() {
 			public void run() {
-				List<String> list = getVideoURLListFromNet(string);
+				try {
+					List<String> list = getVideoURLListFromNet(string);
+
+					if (list.size() <= 0) {
+						System.out.println("网页中没有找到视频连接");
+					} else {
+
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 
 				Media m = new SimpleMedia(string);
+				setOpenVideoFile(string);
 				frame.getMediaPlayer().playMedia(m);// 直接播放
 
 			}
 
-			private List<String> getVideoURLListFromNet(String string) {
+			private List<String> getVideoURLListFromNet(String string) throws Exception {
 
-				return null;
+				List<String> list = null;
+				String htmlFromNet = SpiderUtils.getHtmlFromNet(string);
+
+				Document document = Jsoup.parse(htmlFromNet);
+
+				Elements aElements = document.select("a");
+				if (aElements.size() > 0) {
+					list = new ArrayList<String>();
+
+					for (org.jsoup.nodes.Element element : aElements) {
+						String urlString = element.attr("href");
+						if (isVideoURL(urlString)) {
+
+							System.out.println(urlString);
+							list.add(urlString);
+						}
+					}
+				}
+
+				return list;
 			};
 		}.start();
 
@@ -198,12 +311,25 @@ public class PlayerMain {
 			// 如果匹配不成功,说明不是网址
 			return false;
 		}
+		return isVideoEnds(string);
+	}
+
+	private static boolean isVideoEnds(String string) {
 
 		for (String string2 : VIDEO_FORMATS) {
-			if (string.endsWith(string2)) {
+			if (string.indexOf(string2) != -1) {
 				return true;
 			}
 		}
 		return false;
 	}
+
+	public static String getOpenVideoFile() {
+		return openVideoFile;
+	}
+
+	public static void setOpenVideoFile(String openVideoFile) {
+		PlayerMain.openVideoFile = openVideoFile;
+	}
+
 }
