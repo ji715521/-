@@ -27,7 +27,7 @@ public class URLDialog extends JDialog {
 	private static final long serialVersionUID = 1L;
 	private JTextField textField;
 
-	public URLDialog(MainWindow mainWindow, String title, boolean modal) {
+	public URLDialog(final MainWindow mainWindow, String title, boolean modal) {
 		super(mainWindow, title, modal);
 		this.mainWindow=mainWindow;
 		getContentPane().setLayout(new GridLayout(4, 1, 0, 0));

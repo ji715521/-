@@ -242,7 +242,7 @@ public class PlayerMain {
 	 * 
 	 * @param string
 	 */
-	public static void openURL(String string) {
+	public static void openURL(final String string) {
 
 		new Thread() {
 			public void run() {
